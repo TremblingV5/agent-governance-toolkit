@@ -1,0 +1,73 @@
+# syntax=docker/dockerfile:1.7
+#
+# Minimal-PATH Sandbox Image for Command Denylist Enforcement
+#
+# This Dockerfile creates a hardened sandbox container image where PATH is
+# pinned to a minimal, explicit set of known-good binary locations. This
+# prevents command denylist bypass via alternate binary locations.
+#
+# Related Issue: #2713
+# Parent Tracker: #2662
+
+# Use a minimal base image
+FROM python:3.11-slim@sha256:9358444059ed78e2975ada2c189f1c1a3144a5dab6f35bff8c981afb38946634 AS sandbox-base
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Set minimal PATH - only essential binaries
+# This is the core security measure: restrict executable search path
+ENV PATH="/usr/local/bin:/usr/bin:/bin"
+
+# Remove unnecessary packages and binaries that could bypass denylist
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        # Essential packages only
+        bash \
+        ca-certificates \
+        curl \
+    && # Remove potentially dangerous binaries from common locations
+    rm -f /usr/bin/gcc /usr/bin/g++ /usr/bin/cc \
+    && rm -f /usr/bin/make \
+    && rm -f /usr/bin/apt-get /usr/bin/apt /usr/bin/dpkg \
+    && rm -f /usr/bin/sudo /usr/bin/su \
+    && rm -f /usr/bin/wget \
+    && rm -f /usr/sbin/* 2>/dev/null || true \
+    && # Clean up package manager caches
+    rm -rf /var/lib/apt/lists/* \
+    && rm -rf /var/cache/apt/archives/*
+
+# Create a minimal user for sandbox execution
+RUN useradd --create-home --shell /bin/bash --uid 1000 sandbox \
+    && chown -R sandbox:sandbox /home/sandbox
+
+WORKDIR /home/sandbox
+
+USER sandbox
+
+# Health check to verify PATH restrictions are in place
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD test -z "$(which gcc 2>/dev/null || echo 'found')" && \
+         test -z "$(which make 2>/dev/null || echo 'found')" && \
+         test -z "$(which apt-get 2>/dev/null || echo 'found')" || exit 1
+
+# Default entrypoint - can be overridden by sandbox provider
+ENTRYPOINT ["/bin/bash"]
+CMD ["--restricted"]
+
+# === Stage: test ===
+# Smoke test stage to verify denied binaries are not resolvable from PATH
+FROM sandbox-base AS test
+
+USER root
+
+# Install test dependencies
+RUN pip install --no-cache-dir pytest
+
+# Copy smoke test
+COPY tests/test_sandbox_path_restrictions.py /tests/
+
+# Run smoke tests
+RUN pytest /tests/test_sandbox_path_restrictions.py -v
+
+# === Documentation ===
+# See README-sandbox.md for details on extending the allowed-binary list
