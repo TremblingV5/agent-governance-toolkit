@@ -1,0 +1,30 @@
+# CI workflow modification for Issue #2695
+# This patch adds a dedicated hard-fail conformance step for agent-os package
+# to enforce governance parity and adapter contract conformance tests.
+
+# The change adds a new step in the test job for agent-os matrix runs that:
+# 1. Runs tests/test_governance_parity.py with hard-fail (no || true)
+# 2. Runs tests/test_spec_adapter_contract_conformance.py with hard-fail
+# 3. Keeps the broader || true usage elsewhere unchanged
+
+# To apply this change, modify the test job in .github/workflows/ci.yml
+# by adding the following step after the "Test ${{ matrix.package }}" step
+# but only when matrix.package == 'agent-os':
+
+---
+# Add this step in the test job, conditionally for agent-os:
+- name: Governance parity + adapter contract conformance (agent-os hard-fail)
+  if: steps.gate.outputs.run == 'true' && matrix.package == 'agent-os'
+  working-directory: agent-governance-python/agent-os
+  run: |
+    # Hard-fail conformance check for agent-os governance parity
+    # and adapter contract conformance. No || true - failures are enforced.
+    # Related: #2695
+    if [ -f tests/test_governance_parity.py ]; then
+      echo "Running governance parity tests (hard-fail)..."
+      pytest tests/test_governance_parity.py -v --tb=short
+    fi
+    if [ -f tests/test_spec_adapter_contract_conformance.py ]; then
+      echo "Running adapter contract conformance tests (hard-fail)..."
+      pytest tests/test_spec_adapter_contract_conformance.py -v --tb=short
+    fi
