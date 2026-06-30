@@ -1,5 +1,4 @@
 {
-  "_comment": "Flowise 2.x / 3.x chatflow -- import via Chatflows > Add New > Import icon. Requires AGT sidecar at http://localhost:8000.",
   "nodes": [
     {
       "id": "chatInput_0",

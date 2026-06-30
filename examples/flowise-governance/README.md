@@ -4,7 +4,7 @@ Enforce AGT governance policies inside any Flowise flow. Because Flowise runs in
 
 ## Architecture
 
-The included `flowise-flow.json` is a 5-node sequential demo flow (Flowise 2.x / 3.x):
+The included `flowise-flow.json` is a 5-node sequential demo flow. It has been hand-authored against Flowise's chatflow schema and requires validation on a specific Flowise version before import:
 
 ```
 [Chat Input]
@@ -65,11 +65,13 @@ curl -s -X POST http://localhost:8000/govern \
 
 ### 2. Import the flow into Flowise
 
-1. Open your Flowise instance (2.x or 3.x).
+1. Open your Flowise instance.
 2. Go to **Chatflows** and click **Add New**.
 3. Click the **import** icon (top right toolbar) and select `flowise-flow.json` from this directory.
-4. The flow loads with five nodes already connected.
-5. Click **Save** and then **Deploy**.
+4. If import fails, the JSON may need to be re-exported from a running Flowise instance to match the exact node registry versions.
+5. Once imported successfully, click **Save** and then **Deploy**.
+
+> **Note**: This flow was hand-authored and has not yet been validated against a live Flowise instance. A verified export from a specific Flowise version is needed. See [issue #3194](https://github.com/microsoft/agent-governance-toolkit/issues/3194) for progress.
 
 ### 3. Test the full flow
 
