@@ -726,6 +726,14 @@ class PolicyInterceptor:
             deny_not_allowed_tool,
         )
 
+        # Check call count first (aligns with pre_execute_check ordering)
+        if self.context and self.context.call_count >= self.policy.max_tool_calls:
+            result = deny_max_tool_calls(self.policy.max_tool_calls, self.context.call_count)
+            return ToolCallResult(
+                allowed=False,
+                reason=result.reason,
+            )
+
         # Check human approval requirement
         if self.policy.require_human_approval:
             result = deny_human_approval(request.tool_name)
@@ -747,14 +755,6 @@ class PolicyInterceptor:
         matched = self.policy.matches_pattern(args_str)
         if matched:
             result = deny_blocked_pattern_tool(matched[0])
-            return ToolCallResult(
-                allowed=False,
-                reason=result.reason,
-            )
-
-        # Check call count
-        if self.context and self.context.call_count >= self.policy.max_tool_calls:
-            result = deny_max_tool_calls(self.policy.max_tool_calls, self.context.call_count)
             return ToolCallResult(
                 allowed=False,
                 reason=result.reason,
