@@ -363,7 +363,9 @@ def attack(target: str, playbook_id: Optional[str], output_json: bool, threshold
         click.echo(f"  Results: {passed_count}/{total} playbooks passed")
         click.echo(f"  Overall: {'PASS' if overall_pass else 'FAIL'}\n")
 
-    if not all(r.resilience_score >= threshold for r in results):
+    # Drive the exit code from the same criterion as the printed
+    # verdict (r.passed) so CI and the report never disagree.
+    if not all(r.passed for r in results):
         raise SystemExit(1)
 
 
