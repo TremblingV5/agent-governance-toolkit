@@ -61,18 +61,23 @@ AGT does not try to win that fight inside the prompt. Every tool call, message s
 **Prerequisites:** Python 3.10+
 
 ```bash
-pip install agent-governance-toolkit[full]
+pip install "agent-governance-toolkit[full]"
 ```
 
-Use the `[full]` extra for the quick-start imports below. The base
-`agent-governance-toolkit` wheel installs the compliance CLI only; the governance
-modules live in the consolidated core distribution. The `agentmesh` quick-start
-import remains the current wrapper API. The `agent_os` `PolicyEvaluator` example
-below is legacy compatibility: importing `agent_os` currently emits a
-`DeprecationWarning` because the old `agent-os-kernel` distribution is deprecated.
-Use `agent-governance-toolkit-core` (or the `[full]` extra that includes it) as
-the replacement distribution, and prefer the AGT 5 `agt-policies`/ACS APIs for
-new policy-engine host code.
+Quote the `[full]` extra so bracket-globbing shells (e.g. zsh) install the full
+distribution instead of erroring on — or silently dropping — the extra and
+falling back to the CLI-only base wheel. The base `agent-governance-toolkit`
+wheel installs the compliance CLI only; the governance modules — including the
+`agent_os` module used by the `PolicyEvaluator` example below — live in the
+consolidated `agent-governance-toolkit-core` distribution. Per
+[MIGRATION.md](docs/package-consolidation/MIGRATION.md) the deprecated
+`agent-os-kernel` distribution maps to `agent-governance-toolkit-core`, so the
+canonical install is `pip install "agent-governance-toolkit[full]"` (or
+`pip install agent-governance-toolkit-core` directly). The `agentmesh`
+quick-start import remains the current wrapper API. Importing `agent_os` still
+emits a `DeprecationWarning` that refers to the retired `agent-os-kernel`
+distribution name, not the module path; prefer the AGT 5 `agt-policies`/ACS
+APIs for new policy-engine host code.
 
 For Claude Code, add AGT as a plugin marketplace and install the governance plugin:
 
