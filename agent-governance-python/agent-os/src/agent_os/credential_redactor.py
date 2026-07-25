@@ -46,6 +46,18 @@ class CredentialRedactor:
     callers. The class operates on plain strings as well as nested dictionaries,
     lists, and tuples, replacing detected secret values with a stable
     placeholder.
+
+    .. note::
+
+        Redaction (:meth:`redact`, :meth:`redact_data_structure`,
+        :meth:`scan_and_redact`, :meth:`redact_mapping`) covers **secrets only**
+        — the patterns in :attr:`PATTERNS` (API keys, tokens, private keys,
+        connection strings, etc.). It does **not** scrub personally identifiable
+        information. PII (email, phone, SSN, credit card, IP) is *detected* by
+        :meth:`find_pii_matches` / :meth:`contains_pii` (driven by
+        :attr:`PII_PATTERNS`) but is intentionally **not removed** by
+        :meth:`redact`. Callers that need PII scrubbed must do so explicitly;
+        do not assume :meth:`redact` produces PII-free output.
     """
 
     # Python's stdlib ``re`` does not support per-pattern timeouts. These
@@ -170,8 +182,13 @@ class CredentialRedactor:
             ),
         ),
         CredentialPattern(
+            # Accept dash, space, dot, or no separator so detection matches the
+            # shared ``agent_os.integrations.base.PII_PATTERNS`` SSN pattern
+            # (see PR #2594 / issue #2469). Previously only ``\d{3}-\d{2}-\d{4}``
+            # matched, so ``123 45 6789`` / ``123.45.6789`` / ``123456789`` were
+            # missed here while the integrations adapter caught them.
             name="US SSN",
-            pattern=re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
+            pattern=re.compile(r"\b\d{3}[\s.-]?\d{2}[\s.-]?\d{4}\b"),
         ),
         CredentialPattern(
             name="Credit card number",
@@ -239,6 +256,17 @@ class CredentialRedactor:
         pattern consume the anchor keyword of a later one, which would remove
         less than detection reported and leave a secret in place.
 
+        .. note::
+
+            This method processes **secrets only** — the :attr:`PATTERNS`
+            tuple, via :meth:`find_matches`. It does **not** remove personally
+            identifiable information. PII such as email addresses, phone
+            numbers, SSNs, credit-card numbers, and IP addresses is detected by
+            :meth:`find_pii_matches` (driven by :attr:`PII_PATTERNS`) but is
+            intentionally left untouched here. If you need PII scrubbed, handle
+            the spans returned by :meth:`find_pii_matches` yourself; do not rely
+            on :meth:`redact` for PII removal.
+
         Args:
             value: String content that may contain credential-like material.
 
@@ -285,6 +313,13 @@ class CredentialRedactor:
         :meth:`find_matches` spans used for detection, so a type reported here is
         always removed from ``redacted_text``.
 
+        .. note::
+
+            Only **secrets** (the :attr:`PATTERNS` set) are redacted and
+            reported; PII (:attr:`PII_PATTERNS`) is neither removed nor listed
+            here. Use :meth:`find_pii_matches` separately when PII detection is
+            required.
+
         Args:
             value: String content that may contain credential-like material.
 
@@ -330,6 +365,10 @@ class CredentialRedactor:
     @classmethod
     def redact_data_structure(cls, value: Any) -> Any:
         """Recursively redact nested strings in dicts, lists, and tuples.
+
+        Like :meth:`redact`, this scrubs **secrets only** (via
+        :meth:`find_matches` / :attr:`PATTERNS`); PII detected by
+        :meth:`find_pii_matches` (:attr:`PII_PATTERNS`) is not removed.
 
         Args:
             value: Any Python value that may contain nested strings.
